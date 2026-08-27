@@ -1,0 +1,16 @@
+require('dotenv').config();
+const express = require('express');
+const db = require('./config/db');
+const authRoutes = require('./routes/auth.routes');
+
+const app = express();
+
+app.use(express.json());
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.use('/api/auth', authRoutes);
+
+module.exports = app;
