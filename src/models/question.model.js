@@ -32,16 +32,19 @@ function getWeakConcepts(materialId, userId, limit = 5) {
       c.concept_text,
       COUNT(ah.id) as total_attempts,
       SUM(CASE WHEN ah.was_correct = 0 THEN 1 ELSE 0 END) as wrong_count,
-      CAST(SUM(CASE WHEN ah.was_correct = 0 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(ah.id) as wrong_ratio
+      CAST(SUM(CASE WHEN ah.was_correct = 0 THEN 1 ELSE 0 END) AS FLOAT) / NULLIF(COUNT(ah.id), 0) as wrong_ratio,
+      MAX(CASE WHEN ah.was_correct = 0 THEN ah.answered_at ELSE NULL END) as last_wrong_at
     FROM concepts c
     LEFT JOIN answer_history ah ON ah.concept_id = c.id AND ah.user_id = ?
     WHERE c.material_id = ?
     GROUP BY c.id
     ORDER BY
-      CASE WHEN COUNT(ah.id) = 0 THEN 1 ELSE 0 END,
-      wrong_ratio DESC
+      wrong_ratio DESC,
+      CASE WHEN COUNT(ah.id) = 0 THEN 0 ELSE 1 END,
+      last_wrong_at DESC
     LIMIT ?
   `).all(userId, materialId, limit);
 }
+
 
 module.exports = { saveQuestion, getQuestionsForMaterial, logAnswer, getWeakConcepts };
