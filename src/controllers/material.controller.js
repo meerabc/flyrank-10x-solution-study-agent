@@ -103,16 +103,21 @@ async function upload(req, res) {
 
   materialModel.updateStatus(materialId, 'processing');
 
-  try {
-    await processFile(materialId, tempPath, ext);
-  } catch (err) {
-    materialModel.updateStatus(materialId, 'failed');
-    return res.status(500).json({ error: 'Processing failed', details: err.message });
-  } finally {
-    fs.unlinkSync(tempPath);
-  }
+  res.status(202).json({
+    materialId,
+    status: 'processing',
+    cached: false,
+    message: 'Processing started, poll GET /api/materials/:id for status',
+  });
 
-  res.status(201).json({ materialId, status: 'done', cached: false });
+  processFile(materialId, tempPath, ext)
+    .catch((err) => {
+      console.error(`Background processing failed for material ${materialId}:`, err.message);
+      materialModel.updateStatus(materialId, 'failed');
+    })
+    .finally(() => {
+      fs.unlink(tempPath, () => {});
+    });
 }
 
 function getStatus(req, res) {
