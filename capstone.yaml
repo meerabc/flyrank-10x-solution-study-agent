@@ -1,0 +1,17 @@
+run: npm start
+seed: node scripts/seed.js
+test: npm test
+base_url: http://localhost:3000
+endpoints:
+  - method: POST
+    path: /api/auth/register
+  - method: POST
+    path: /api/auth/login
+  - method: POST
+    path: /api/materials
+  - method: GET
+    path: /api/materials/:id
+  - method: GET
+    path: /api/materials/:id/quiz
+  - method: POST
+    path: /api/materials/:id/answers

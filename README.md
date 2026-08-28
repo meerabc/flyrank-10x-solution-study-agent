@@ -18,9 +18,10 @@ Re-processing a file already seen meant paying that same cost again.
 This version fixes both. A new upload returns in well under a second
 with a `processing` status, while the real work happens in the
 background. Re-uploading a file already processed returns instantly from
-cache instead of recomputing anything, measured at roughly 0.03 seconds
-versus roughly 34 seconds for the original run, a genuine, measured
-speedup, not an estimate.
+cache instead of recomputing anything. Verified on a real 40 page
+academic PDF: first processing completed in 5 minutes 46 seconds,
+re-uploading the exact same file afterward returned in 0.03 seconds, a
+genuine, measured result, not an estimate.
 
 ## The 5+ concepts
 
@@ -129,9 +130,14 @@ npm start
 ## Limitations, honestly
 
 - Gemini's free tier has real per minute rate limits. Processing paces
-  requests roughly 8 seconds apart to stay under them, so a large file
-  still takes real time on its first run, the improvement is that the
-  request no longer blocks waiting for it, and repeat runs are instant.
+  requests roughly 10 seconds apart to stay under them, and any request
+  that still hits a rate limit automatically waits and retries up to 4
+  times before giving up, using the retry delay Google's own API response
+  specifies. A full 40 page file processes successfully in roughly 5 to 6
+  minutes on this free tier. The improvement this capstone delivers is
+  not that processing itself got faster, it is that the request no
+  longer blocks waiting for it, and re-processing anything already seen
+  is instant.
 - Answers are self reported (`wasCorrect` sent by the client) rather than
   automatically graded, since these are open ended questions where
   correct answers can be phrased many ways.
