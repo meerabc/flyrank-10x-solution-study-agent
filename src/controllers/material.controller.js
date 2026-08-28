@@ -21,6 +21,23 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function callWithRetry(fn, maxRetries = 4) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const is429 = err.message && err.message.includes('429');
+      if (!is429 || attempt === maxRetries) {
+        throw err;
+      }
+      const retryMatch = err.message.match(/retry in ([\d.]+)s/i);
+      const waitSeconds = retryMatch ? parseFloat(retryMatch[1]) + 3 : 20;
+      console.log(`Rate limited, waiting ${waitSeconds.toFixed(1)}s before retry ${attempt + 1}/${maxRetries}...`);
+      await delay(waitSeconds * 1000);
+    }
+  }
+}
+
 async function processFile(materialId, filePath, fileType) {
   let units = [];
 
@@ -39,7 +56,7 @@ async function processFile(materialId, filePath, fileType) {
   for (const unit of units) {
     if (!unit.text && unit.images.length === 0) continue;
 
-    const extraction = await extractConcept({ text: unit.text, images: unit.images });
+    const extraction = await callWithRetry(() => extractConcept({ text: unit.text, images: unit.images }));
     if (extraction.concept.toLowerCase().includes('insufficient content')) continue;
 
     const conceptId = conceptModel.saveConcept({
@@ -49,9 +66,9 @@ async function processFile(materialId, filePath, fileType) {
       confidence: extraction.confidence,
     });
 
-    await delay(8000);
+    await delay(10000);
 
-    const q = await generateQuestion({ concept: extraction.concept });
+    const q = await callWithRetry(() => generateQuestion({ concept: extraction.concept }));
     if (q.question && q.answer) {
       questionModel.saveQuestion({
         conceptId,
@@ -61,7 +78,7 @@ async function processFile(materialId, filePath, fileType) {
       });
     }
 
-    await delay(500);
+    await delay(10000);
   }
 
   materialModel.updateStatus(materialId, 'done');
